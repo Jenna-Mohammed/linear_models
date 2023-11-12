@@ -1,0 +1,125 @@
+---
+title: "Linear Models"
+author: "Jenna Mohammed"
+date: '2023-11-09'
+output: html_document
+---
+
+the way predictors are related to outcome is through the formula 
+- not a perfect fit, some errors are stacked upon (mean 0 and variance sigma^2)
+- continuous added directly, categorical required dummy variable
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+```
+
+```{r}
+# loading and cleaning data 
+
+data("nyc_airbnb")
+
+nyc_airbnb = 
+  nyc_airbnb |> 
+  mutate(stars = review_scores_location / 2) |> 
+  rename(
+    borough = neighbourhood_group,
+    neighborhood = neighbourhood) |> 
+  filter(borough != "Staten Island") |> 
+  select(price, stars, borough, neighborhood, room_type)
+```
+
+let's fit a model!!
+
+```{r}
+
+# linear regression model ; start with the dataframr
+
+#fit = 
+ # nyc_airbnb |>
+  #lm(price ~ stars + borough, data = nyc_airbnb)
+
+# lm -> formula is the first thing in the function, not the dataframe
+```
+
+let's look at the `fit`
+
+```{r}
+#summary(fit)
+summary(fit)$coef
+fitted.values(fit)
+
+#^ not used often
+```
+
+tidy up the output
+```{r}
+fit |>
+  broom ::glance()
+
+# broom/glance -> high level summary of how well this function works
+# better option
+```
+
+tidy up the coefficients 
+```{r}
+fit |>
+  broom::tidy()
+
+# best option to use
+
+fit |> 
+  broom::tidy() |> 
+  select(term, estimate, p.value) |> 
+  mutate(term = str_replace(term, "^borough", "Borough: ")) |> 
+  knitr::kable(digits = 3)
+
+# shows a neat and tidy table
+```
+
+## quick look at diagnostics 
+
+```{r}
+nyc_airbnb|>
+  modelr::add_residuals(fit) |>
+  ggplot(aes(x = resid)) +
+  geom_density() +
+  xlim(-100, 500)
+
+nyc_airbnb |> 
+  modelr::add_residuals(fit) |> 
+  ggplot(aes(x = borough, y = resid)) + geom_violin()
+
+nyc_airbnb |> 
+  modelr::add_residuals(fit) |> 
+  ggplot(aes(x = stars, y = resid)) + geom_point()
+```
+
+## Hypothesis Test for categorical predictor 
+
+fot a "null" and "alternative" model
+
+```{r}
+# hypothesis testing for categorical ->
+
+fit |>
+  broom::tidy()
+
+fit_null = lm(price ~ stars + borough, data = nyc_airbnb)
+fit_alt = lm(price ~ stars + borough + room_type, data = nyc_airbnb)
+
+anova(fit_null, fit_alt) |> 
+  broom::tidy()
+
+# can use anove as long as you have a fit 
+```
+
+## Borough-level differences
+
+```{r}
+
+```
+
+
+```{r}
+```
+
