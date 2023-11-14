@@ -2,29 +2,106 @@
 title: "Cross Validation"
 author: "Jenna Mohammed"
 date: '2023-11-14'
-output: html_document
+output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+underfitting - we need stuff in our model to make it work 
+overfitting  extra stuff just making noise
+
+### implementing cross validation 
+
+add_predictions() and add_residuals()
+rmse()
+crossv_msc()
+
+```{r}
+library(tidyverse)
+library(modelr)
+library(mgcv)
+set.seed(1)
 ```
 
-## R Markdown
+## Nonlinear data and CV 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+nonlin_df = 
+  tibble(
+    id = 1:100,
+    x = runif(100, 0, 1),
+    y = 1 - 10 * (x - .3) ^ 2 + rnorm(100, 0, .3)
+  )
+# what this dataset looks like 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+nonlin_df |> 
+  ggplot(aes(x = x, y = y)) + 
+  geom_point()
 ```
 
-## Including Plots
+ try to pick between different models that might work and see which has the best prediction accuracy 
+ 
+ 
+ 
+- do the train/test split
+ 
+```{r}
+train_df = sample_n(nonlin_df, 80)
 
-You can also embed plots, for example:
+# ^ subject 8 is not included in this dataset 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+test_df = anti_join(nonlin_df, train_df, by = "id")
+
+# ^ subject 8 DOES show up
+
+ggplot(train_df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_point(data = test_df, color = "red")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+linear_mod = lm(y ~ x, data = train_df)
+
+smooth_mod = mgcv::gam(y ~ s(x), data = train_df)
+#^ gam function; give me a smooth function of x and use this to create the model
+
+wiggly_mod = mgcv::gam(y ~ s(x, k = 30), sp = 10e-6, data = train_df)
+```
+
+quick visualization of the linear model 
+
+```{r}
+train_df |>
+  modelr::add_predictions(linear_mod) |>
+  ggplot(aes( x=x, y=y)) +
+  geom_point() +
+  geom_line(aes( y = pred))
+
+#^ not a good fit, just a straight line through the data 
+
+train_df |>
+  modelr::add_predictions(smooth_mod) |>
+  ggplot(aes( x=x, y=y)) +
+  geom_point() +
+  geom_line(aes( y = pred))
+
+# ^ offers a smooth curve thrugh the data points; used he game function in above code chunk
+
+train_df |>
+  modelr::add_predictions(wiggly_mod) |>
+  ggplot(aes( x=x, y=y)) +
+  geom_point() +
+  geom_line(aes( y = pred))
+```
+
+lowest residual standard deviation 
+
+```{r}
+rmse(linear_mod, train_df)
+rmse(smooth_mod, train_df)
+rmse(wiggly_mod, train_df)
+
+rmse(linear_mod, test_df)
+rmse(smooth_mod, test_df)
+rmse(wiggly_mod, test_df)
+```
+
+^ RMSE on testing data gives a sense of out of sample prediction accuracy!
