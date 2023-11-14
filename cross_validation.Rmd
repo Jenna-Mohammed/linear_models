@@ -105,3 +105,38 @@ rmse(wiggly_mod, test_df)
 ```
 
 ^ RMSE on testing data gives a sense of out of sample prediction accuracy!
+
+## Use modelr for 
+
+```{r}
+cv_df = 
+  crossv_mc(nonlin_df, 100) 
+```
+
+apply each model to all training datasets and evaluate on all testing datasets
+
+```{r}
+cv_results = 
+  cv_df |>
+  mutate(
+    linear_fit = map(train, \(df) lm(y ~ x, data = df))
+  ) |>
+  mutate(
+    rmse_linear = map2(linear_fit, test, \(mod, df) rmse(mod, df))
+  )
+```
+
+^whole linear mdoel function, take df as  input, plug it in, and return results in a linear model
+
+```{r}
+cv_df = 
+  cv_df |> 
+  mutate(
+    linear_mod  = map(train, ~lm(armc ~ weight, data = .x)),
+    pwl_mod     = map(train, ~lm(armc ~ weight + weight_cp, data = .x)),
+    smooth_mod  = map(train, ~gam(armc ~ s(weight), data = as_tibble(.x)))) |> 
+  mutate(
+    rmse_linear = map2_dbl(linear_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_pwl    = map2_dbl(pwl_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_smooth = map2_dbl(smooth_mod, test, ~rmse(model = .x, data = .y)))
+```
