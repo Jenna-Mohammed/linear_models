@@ -34,9 +34,9 @@ let's fit a model!!
 
 # linear regression model ; start with the dataframr
 
-#fit = 
- # nyc_airbnb |>
-  #lm(price ~ stars + borough, data = nyc_airbnb)
+fit = 
+  nyc_airbnb |>
+  lm(price ~ stars + borough, data = nyc_airbnb)
 
 # lm -> formula is the first thing in the function, not the dataframe
 ```
@@ -116,10 +116,57 @@ anova(fit_null, fit_alt) |>
 ## Borough-level differences
 
 ```{r}
+fit = 
+  nyc_airbnb |>
+  lm(price = stars *borough + room_type * borough, data = _
+     )
+fit |>
+  broom::tidy()
 
+# need to add an interaction (the * values)
 ```
 
 
 ```{r}
+nyc_airbnb |>
+  nest(df = -borough)
+
+# using nest() to create a list column containing datasets and fit separate models to each
+
+nyc_airbnb |>
+  nest(df = -borough) |>
+  mutate(
+    models = map(df, airbnb_lm),
+    results = map(models, broom::tidy())
+  ) |>
+  select(borough, results) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  ) |>
+  knitr::kable(digits = 2)
+  
+# anaonymus function "models = map(data, \(df) lm(price ~ stars + room_type, data = df)),", exists for this code and then disapears
+  
+
+airbnb_lm = function(df) {
+  lm(price ~ stars + room_type, data = df)
+
+}
+```
+
+## Homicide in Baltimore 
+
+```{r}
+baltimore_df = 
+  read_csv("data/homicide-data.csv") |> 
+  filter(city == "Baltimore") |> 
+  mutate(
+    resolved = as.numeric(disposition == "Closed by arrest"),
+    victim_age = as.numeric(victim_age),
+    victim_race = fct_relevel(victim_race, "White")) |> 
+  select(resolved, victim_age, victim_race, victim_sex)
 ```
 
